@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-const API = process.env.NEXT_PUBLIC_API!;
-const TOK = "local-dev-token"; // M6: swap for session token
-const H = { Authorization: `Bearer ${TOK}` };
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch, describeError } from "../../lib/api";
+import { ErrorPanel, Loading } from "../../components/ApiState";
 
 type Task = { id: string; title: string; state: string; dept: string; dept_label: string; assignee_name: string | null };
 const COLUMNS = ["open", "doing", "done"] as const;
@@ -10,25 +9,40 @@ const COLUMNS = ["open", "doing", "done"] as const;
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const load = () => fetch(`${API}/api/v1/tasks`, { headers: H }).then(r => r.json()).then(j => setTasks(j.tasks ?? []));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => {
+    setLoadError(null);
+    return apiFetch<{ tasks?: Task[] }>("/tasks")
+      .then(j => { setTasks(j.tasks ?? []); setLoaded(true); })
+      .catch(setLoadError);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
+  const mutate = async (fn: () => Promise<unknown>) => {
+    setBusy(true); setActionError(null);
+    try { await fn(); await load(); return true; }
+    catch (e) { setActionError(describeError(e).title + " " + describeError(e).hint); return false; }
+    finally { setBusy(false); }
+  };
   const addTask = async () => {
-    if (!title.trim()) return;
-    await fetch(`${API}/api/v1/tasks`, {
-      method: "POST", headers: { ...H, "Content-Type": "application/json" },
+    if (!title.trim() || busy) return;
+    const ok = await mutate(() => apiFetch("/tasks", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
-    });
-    setTitle(""); load();
+    }));
+    if (ok) setTitle("");
   };
-  const move = async (id: string, state: string) => {
-    await fetch(`${API}/api/v1/tasks/${id}`, {
-      method: "PATCH", headers: { ...H, "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
-    });
-    load();
-  };
+  const move = (id: string, state: string) => mutate(() => apiFetch(`/tasks/${id}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ state }),
+  }));
+
+  if (loadError) return <main className="gridbg min-h-screen p-6"><ErrorPanel error={loadError} onRetry={load} /></main>;
+  if (!loaded) return <main className="gridbg min-h-screen p-6"><Loading /></main>;
 
   return (
     <main className="gridbg min-h-screen p-6 space-y-4">
@@ -40,9 +54,12 @@ export default function TasksPage() {
       <div className="flex gap-2 max-w-xl">
         <input value={title} onChange={e => setTitle(e.target.value)}
                onKeyDown={e => e.key === "Enter" && addTask()}
-               placeholder="new task..." className="flex-1 bg-black/40 border border-zinc-600 px-3 py-2 text-sm" />
-        <button onClick={addTask} className="px-3 py-2 border border-zinc-600 text-sm">Add</button>
+               aria-label="New task title"
+               placeholder="new task..." className="flex-1 min-w-0 bg-black/40 border border-zinc-600 px-3 py-2 text-sm" />
+        <button onClick={addTask} disabled={busy || !title.trim()}
+                className="px-3 py-2 border border-zinc-600 text-sm disabled:opacity-40">{busy ? "Saving…" : "Add"}</button>
       </div>
+      {actionError && <p role="alert" className="text-xs text-[#ffb020] max-w-xl">{actionError}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {COLUMNS.map(col => (
@@ -51,14 +68,15 @@ export default function TasksPage() {
               {col} <span className="text-zinc-300">{tasks.filter(t => t.state === col).length}</span>
             </div>
             <div className="space-y-2">
+              {tasks.filter(t => t.state === col).length === 0 && <p className="text-xs text-zinc-600">Nothing here.</p>}
               {tasks.filter(t => t.state === col).map(t => (
                 <div key={t.id} className="border border-[var(--line)] p-2 text-sm">
                   <div>{t.title}</div>
                   <div className="text-[9px] text-zinc-500 mt-1">{t.dept_label}{t.assignee_name ? ` · ${t.assignee_name}` : ""}</div>
                   <div className="flex gap-1 mt-2">
                     {COLUMNS.filter(c => c !== col).map(c => (
-                      <button key={c} onClick={() => move(t.id, c)}
-                              className="text-[9px] px-1.5 py-0.5 border border-zinc-700 hover:border-zinc-400">
+                      <button key={c} onClick={() => move(t.id, c)} disabled={busy}
+                              className="text-[10px] px-2 py-1 border border-zinc-700 hover:border-zinc-400 disabled:opacity-40">
                         → {c}
                       </button>
                     ))}

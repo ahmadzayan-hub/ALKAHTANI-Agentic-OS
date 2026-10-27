@@ -34,7 +34,9 @@ export async function taskRoutes(app: FastifyInstance) {
     const { state } = req.body ?? {};
     if (!STATES.includes(state as any)) return reply.code(400).send({ error: `state must be one of ${STATES.join(",")}` });
     await db.query(
-      `update tasks set state=$2, completed_at = case when $2='done' then now() else null end
+      // Cast once: $2 feeds both an enum column and a text comparison, and
+      // Postgres refuses to deduce two types for one parameter.
+      `update tasks set state=$2::task_state, completed_at = case when $2::task_state='done' then now() else null end
        where id=$1`,
       [req.params.id, state]);
     return { id: req.params.id, state };

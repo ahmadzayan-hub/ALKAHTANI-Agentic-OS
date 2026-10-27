@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-const API = process.env.NEXT_PUBLIC_API!;
-const TOK = "local-dev-token"; // M6: swap for session token
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "../../lib/api";
+import { ErrorPanel, Loading } from "../../components/ApiState";
 
 type Stage = { stage: string; count: number; carry_pct: number | null };
 type Journey = { id: string; contact: string; campaign: string | null; stage: string; entered_at: string; converted_at: string | null };
@@ -17,13 +17,23 @@ export default function FunnelPage() {
   const [stages, setStages] = useState<Stage[]>([]);
   const [total, setTotal] = useState(0);
   const [journeys, setJourneys] = useState<Journey[]>([]);
-  useEffect(() => {
-    const h = { Authorization: `Bearer ${TOK}` };
-    fetch(`${API}/api/v1/funnel`, { headers: h }).then(r => r.json()).then(j => { setStages(j.stages ?? []); setTotal(j.total ?? 0); });
-    fetch(`${API}/api/v1/funnel/journeys`, { headers: h }).then(r => r.json()).then(j => setJourneys(j.journeys ?? []));
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const load = useCallback(() => {
+    setError(null);
+    Promise.all([
+      apiFetch<{ stages?: Stage[]; total?: number }>("/funnel"),
+      apiFetch<{ journeys?: Journey[] }>("/funnel/journeys"),
+    ])
+      .then(([f, j]) => { setStages(f.stages ?? []); setTotal(f.total ?? 0); setJourneys(j.journeys ?? []); setLoaded(true); })
+      .catch(setError);
   }, []);
+  useEffect(() => { load(); }, [load]);
 
   const max = stages[0]?.count || 1;
+
+  if (error) return <main className="gridbg min-h-screen p-6"><ErrorPanel error={error} onRetry={load} /></main>;
+  if (!loaded) return <main className="gridbg min-h-screen p-6"><Loading /></main>;
 
   return (
     <main className="gridbg min-h-screen p-6 space-y-4">
@@ -40,11 +50,11 @@ export default function FunnelPage() {
           {stages.map((st, i) => (
             <div key={st.stage}>
               {st.carry_pct != null && (
-                <div className="text-[9px] text-zinc-600 ml-[168px]">
+                <div className="text-[9px] text-zinc-600 ml-[100px] sm:ml-[168px]">
                   ↳ <b className="text-[var(--fin)] font-normal">{st.carry_pct}%</b> carry from previous stage
                 </div>
               )}
-              <div className="grid grid-cols-[150px_1fr_150px] items-center gap-3">
+              <div className="grid grid-cols-[88px_1fr_64px] sm:grid-cols-[150px_1fr_150px] items-center gap-3">
                 <span className="text-sm">{STAGE_LABEL[st.stage] ?? st.stage}</span>
                 <div className="h-[30px] bg-[rgba(21,32,25,.55)] relative">
                   <div className="absolute inset-y-0 left-0 flex items-center px-3 text-xs font-bold text-black"
@@ -52,7 +62,7 @@ export default function FunnelPage() {
                     {Math.round((st.count / max) * 100)}%
                   </div>
                 </div>
-                <span className="text-right"><b className="text-xl font-extrabold">{st.count}</b> <span className="text-zinc-500 text-xs">journeys</span></span>
+                <span className="text-right"><b className="text-xl font-extrabold">{st.count}</b> <span className="hidden sm:inline text-zinc-500 text-xs">journeys</span></span>
               </div>
             </div>
           ))}
@@ -61,6 +71,7 @@ export default function FunnelPage() {
 
       <div>
         <div className="text-[10px] tracking-widest text-zinc-500 uppercase mb-2">ACTIVE JOURNEYS — NEWEST MOVEMENT FIRST</div>
+        {journeys.length === 0 && <p className="text-sm text-zinc-500">No active journeys yet.</p>}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {journeys.map(j => (
             <div key={j.id} className="border border-[var(--line)] bg-black/20 p-3">
