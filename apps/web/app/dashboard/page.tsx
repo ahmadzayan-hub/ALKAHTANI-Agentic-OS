@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-const API = process.env.NEXT_PUBLIC_API!;
-const TOK = "local-dev-token"; // M6: swap for session token
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "../../lib/api";
+import { ErrorPanel, Loading } from "../../components/ApiState";
 
 type Summary = {
   pipeline: { open_usd: number; open_count: number; stalled_oldest: { title: string; value_usd: number | null; stall_days: number } | null };
@@ -24,13 +24,20 @@ const STAGE_LABEL: Record<string, string> = {
 export default function DashboardPage() {
   const [s, setS] = useState<Summary | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
-  useEffect(() => {
-    const h = { Authorization: `Bearer ${TOK}` };
-    fetch(`${API}/api/v1/dashboard/summary`, { headers: h }).then(r => r.json()).then(setS);
-    fetch(`${API}/api/v1/tasks`, { headers: h }).then(r => r.json()).then(j => setTasks(j.tasks?.slice(0, 8) ?? []));
+  const [error, setError] = useState<unknown>(null);
+  const load = useCallback(() => {
+    setError(null);
+    Promise.all([
+      apiFetch<Summary>("/dashboard/summary"),
+      apiFetch<{ tasks?: Task[] }>("/tasks"),
+    ])
+      .then(([summary, t]) => { setS(summary); setTasks(t.tasks?.slice(0, 8) ?? []); })
+      .catch(setError);
   }, []);
+  useEffect(() => { load(); }, [load]);
 
-  if (!s) return <main className="gridbg min-h-screen p-6 text-sm text-zinc-500">loading…</main>;
+  if (error) return <main className="gridbg min-h-screen p-6"><ErrorPanel error={error} onRetry={load} /></main>;
+  if (!s) return <main className="gridbg min-h-screen p-6"><Loading /></main>;
 
   const max = s.funnel.stages[0]?.count || 1;
 
