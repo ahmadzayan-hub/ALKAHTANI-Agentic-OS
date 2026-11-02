@@ -1,0 +1,19 @@
+name: API contracts
+on:
+  pull_request:
+  push:
+    branches: [main, claude/agentic-os-build-dp93ao]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test --workspace apps/api
