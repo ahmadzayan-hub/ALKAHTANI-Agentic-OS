@@ -43,6 +43,44 @@ Agent OS code and does not claim that 35 identity documents are 35 running agent
 
 ## Validation and rollback
 
+### Jarvis visual milestone, 2026-11-02
+
+The existing `/agent-os` page now has an original Canvas 2D particle portrait,
+an orb with orbital rings, and a registry mode that uses only the loaded project
+identities (at most eight displayed). An unloaded registry shows no invented
+agent nodes. These are decorative visuals; they are not runtime telemetry.
+No donor code, portrait assets, new dependency, provider, or microphone access
+was added. The disabled Hermes adapter and existing authenticated snapshot
+interface are unchanged.
+
+The renderer caps drawing at 24 frames per second, uses 1,100 points (half drawn
+on narrow canvases), caps pixel ratio at 1.5, pauses outside the viewport and when
+the document is hidden, and cleans up observers and animation frames. It has a
+Pause/Resume control and renders statically for `prefers-reduced-motion`.
+The navigation gains a compact mobile bar; the shared layout reserves its space.
+
+Validation of this visual change:
+
+- API and web TypeScript checks passed; all 12 synthetic API/adapter tests passed.
+- Web TypeScript and `git diff --check` passed again after the final geometry edit.
+- Frontend-only HTTP 200 and actual desktop browser pixels were inspected for
+  portrait, core and unloaded registry modes, and Pause/Resume.
+- A 390 by 844 viewport override was checked. Its 375-pixel content viewport
+  had a matching 375-pixel scroll width: no horizontal overflow. The compact
+  navigation, portrait, stacked telemetry, counters and token form were inspected.
+- A synthetic token produced the expected unavailable-API state. Disconnect
+  cleared it and disabled Load; the runtime and microphone stayed disconnected.
+- Reduced-motion and hidden-page guards were code-reviewed, not tested by
+  changing the user's operating-system preferences. Populated graph rendering,
+  production build and live authenticated integration remain untested.
+
+This visual commit builds on local commit
+`2a7567cfe8ee5179f1238055c284251193401540`. Revert only the visual commit to restore
+that milestone while keeping the read-only overview and disabled adapter.
+No push, merge or deployment is part of this local work.
+
+### Earlier overview milestone
+
 Observed locally on 2026-11-02 with Node 24.14.0:
 
 - Locked install completed: 163 packages; lifecycle scripts and audit disabled.

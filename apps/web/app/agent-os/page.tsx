@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import JarvisPresence from "../../components/JarvisPresence";
+import "./jarvis.css";
 
 interface Overview {
   observedAt: string;
@@ -12,7 +14,7 @@ interface Overview {
   hermes: { state: string; installedVersion: string | null; runningVersion: string | null };
 }
 
-const panel = "border border-[var(--line)] bg-black/30 p-5";
+
 
 export default function AgentOsPage() {
   const [token, setToken] = useState("");
@@ -68,72 +70,78 @@ export default function AgentOsPage() {
     } finally { clearTimeout(timeout); }
   }
 
-  return <main className="gridbg min-h-screen p-5 md:p-8 space-y-5">
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <div className="text-xs tracking-widest text-zinc-500">ALKAHTANI / OPERATOR WORKSPACE</div>
-        <h1 className="text-3xl font-bold mt-2">AGENT OS <span className="text-[var(--cli)]">/ JARVIS</span></h1>
-        <p className="text-sm text-zinc-400 mt-3 max-w-2xl">Your agent registry, tasks and project memory in one view. Every connection starts with verified evidence.</p>
-      </div>
-      <span className="border border-zinc-700 px-3 py-2 text-xs uppercase">{state === "loaded" ? "Snapshot loaded" : state}</span>
+  return <main className="jarvis-page">
+    <header className="jarvis-top">
+      <div className="jarvis-wordmark"><div className="jarvis-mark" aria-hidden="true">J</div><div>
+        <div className="jarvis-kicker">ALKAHTANI / AGENT OS</div><div className="jarvis-brand">JARVIS INTERFACE</div>
+      </div></div>
+      <span className="jarvis-state">{state === "loaded" ? "Snapshot loaded" : state}</span>
     </header>
 
-    <section className={panel} aria-labelledby="access-title">
-      <h2 id="access-title" className="text-sm font-bold">Operator access</h2>
-      <form onSubmit={load} className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="text-xs text-zinc-400 flex-1 min-w-48">Existing operator token
-          <input type="password" value={token} onChange={e => setToken(e.target.value)} autoComplete="off"
-            className="block w-full mt-2 border border-zinc-600 bg-black p-2 text-white" />
-        </label>
-        <button disabled={!token.trim() || state === "loading"} className="border border-[var(--cli)] px-4 py-2 text-sm disabled:opacity-40">{state === "loading" ? "Loading…" : "Load workspace"}</button>
-        <button type="button" onClick={disconnect} className="border border-zinc-600 px-4 py-2 text-sm">Disconnect</button>
-      </form>
-      <p className="mt-3 text-xs text-zinc-500">The token stays in this tab. Loading reads records; it does not run agents.</p>
-      <p role="status" aria-live="polite" className="mt-3 text-sm text-zinc-300">{message}</p>
-      {snapshot && <p className="mt-2 text-xs text-zinc-500">Snapshot: <time dateTime={snapshot.observedAt}>{snapshot.observedAt}</time> · Project database · Refresh manually</p>}
-    </section>
-
-    <div className="grid lg:grid-cols-[1.1fr_1fr] gap-5">
-      <section className={panel} aria-labelledby="hermes-title">
-        <div className="flex items-center gap-6">
-          <div aria-hidden="true" className="shrink-0 h-24 w-24 rounded-full border border-cyan-400/40 grid place-items-center bg-cyan-400/5">
-            <div className="h-16 w-16 rounded-full border border-cyan-300/50 grid place-items-center"><div className="h-7 w-7 rounded-full bg-cyan-300/30" /></div>
-          </div>
-          <div><h2 id="hermes-title" className="text-lg font-bold">Hermes</h2>
-            <p className="mt-2 text-[var(--cli)]">{snapshot?.hermes.state ?? "Not connected"}</p>
-            <p className="mt-2 text-xs text-zinc-400">Installed: {snapshot?.hermes.installedVersion ?? "Not verified"}<br />Running: {snapshot?.hermes.runningVersion ?? "Not verified"}</p>
-          </div>
-        </div>
-        <p className="text-sm text-zinc-400 mt-5">Runtime access is disabled. This workspace has no Hermes execution or memory connection.</p>
-        <button disabled className="mt-4 border border-zinc-700 px-3 py-2 text-xs text-zinc-500">Voice controls unavailable</button>
-      </section>
-
-      <section className={panel} aria-labelledby="tasks-title">
-        <h2 id="tasks-title" className="font-bold">Task state</h2>
-        <div className="grid grid-cols-2 gap-3 mt-4">{["open", "doing", "done", "blocked"].map(key =>
-          <div key={key} className="border border-[var(--line)] p-3"><div className="text-xs uppercase text-zinc-400">{key}</div><div className="text-2xl mt-1">{snapshot?.tasks.counts[key] ?? "—"}</div></div>)}</div>
-        <p className="mt-3 text-xs text-zinc-400">Pending approvals: {snapshot?.pendingApprovals ?? "Not loaded"}</p>
-      </section>
+    <div className="jarvis-intro">
+      <div><div className="jarvis-kicker">A workspace with presence</div>
+        <h1>Your agents.<br /><em>One clear view.</em></h1>
+        <p>A quiet center for your agent registry, work and memory.<br />You stay in control of every connection.</p>
+      </div>
+      <div className="jarvis-edition">PERSONAL WORKSPACE<br />LOCAL PREVIEW / 01</div>
     </div>
 
-    <section className={panel} aria-labelledby="agents-title">
-      <h2 id="agents-title" className="font-bold">Agent registry {snapshot && <span className="font-normal text-zinc-400">· {snapshot.agents.length} identities</span>}</h2>
-      <p className="text-xs text-zinc-400 mt-2">Registry settings and past runs do not establish that an agent is running now.</p>
-      {!snapshot ? <p className="mt-5 text-sm text-zinc-500">Registry not loaded.</p> : snapshot.agents.length === 0 ? <p className="mt-5 text-sm">No registered identities.</p> :
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3 mt-5">{snapshot.agents.map(agent =>
-          <article key={agent.slug} className="border border-[var(--line)] p-4">
-            <h3 className="font-bold">{agent.name}</h3><p className="text-xs text-zinc-400 mt-1">{agent.crew} · {agent.role}</p>
-            <p className="mt-3 text-xs">Configured: {agent.configured_status}</p><p className="text-xs text-amber-300 mt-1">Runtime: {agent.runtime_state}</p>
-            <p className="text-xs text-zinc-500 mt-3">Last completed run: {agent.last_finished_at ?? "No recorded completion"}</p>
-          </article>)}</div>}
+    <div className="jarvis-hero">
+      <JarvisPresence agents={snapshot?.agents ?? null} />
+      <aside className="jarvis-telemetry" aria-label="Connection state">
+        <div><h2>Runtime / Hermes</h2>
+          <div className="j-status-row"><span>Connection</span><strong className="j-amber">{snapshot?.hermes.state ?? "Not connected"}</strong></div>
+          <div className="j-status-row"><span>Execution</span><strong>Disabled</strong></div>
+          <p className="jarvis-version">Installed: {snapshot?.hermes.installedVersion ?? "Not verified"}<br />Running: {snapshot?.hermes.runningVersion ?? "Not verified"}</p>
+        </div>
+        <div className="jarvis-voice"><h2>Voice interface</h2>
+          <div className="j-status-row"><span>Microphone</span><strong>Not enabled</strong></div>
+          <button disabled>Voice controls unavailable</button>
+          <p>The visualization does not listen or respond. No Hermes execution or memory connection is enabled.</p>
+        </div>
+      </aside>
+    </div>
+
+    <section className="j-stats" aria-label="Recorded workspace totals">
+      <div className="j-stat"><span>Registered identities</span><strong>{snapshot?.agents.length ?? "—"}</strong><small>Runtime unverified</small></div>
+      <div className="j-stat"><span>Open tasks</span><strong>{snapshot?.tasks.counts.open ?? "—"}</strong><small>Project records</small></div>
+      <div className="j-stat"><span>In progress</span><strong>{snapshot?.tasks.counts.doing ?? "—"}</strong><small>Recorded task state</small></div>
+      <div className="j-stat"><span>Approvals</span><strong>{snapshot?.pendingApprovals ?? "—"}</strong><small>Awaiting review</small></div>
     </section>
 
-    <section className={panel} aria-labelledby="memory-title">
-      <h2 id="memory-title" className="font-bold">Project memory / G-Brain</h2>
-      <p className="text-sm text-zinc-400 mt-2">Existing project records only. Hermes profiles and private files have not been linked.</p>
-      <div className="flex flex-wrap gap-3 mt-4">{snapshot ? snapshot.memory.counts.length ? snapshot.memory.counts.map(row =>
-        <span key={row.type} className="border border-zinc-700 p-2 text-xs">{row.type}: {row.count}</span>) : <span className="text-sm text-zinc-500">No project memory records.</span>
-        : <span className="text-sm text-zinc-500">Memory counts not loaded.</span>}</div>
+    <section className="jarvis-section" aria-labelledby="access-title">
+      <div className="j-section-heading"><h2 id="access-title">Connect your workspace</h2><span>Read only</span></div>
+      <p className="j-section-description">Load your existing project records. Connecting here does not start an agent.</p>
+      <form onSubmit={load} className="j-access-form">
+        <label>Existing operator token<input type="password" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" /></label>
+        <button disabled={!token.trim() || state === "loading"}>{state === "loading" ? "Loading…" : "Load workspace ↗"}</button>
+        <button type="button" className="secondary" onClick={disconnect}>Disconnect</button>
+      </form>
+      <p role="status" aria-live="polite" className="j-message">{message}</p>
+      <p className="j-fineprint">Your token stays in this tab and is cleared when you disconnect.</p>
+      {snapshot && <p className="j-fineprint">Snapshot: <time dateTime={snapshot.observedAt}>{snapshot.observedAt}</time> · Project database · Refresh manually</p>}
     </section>
+
+    <section className="jarvis-section" aria-labelledby="agents-title">
+      <div className="j-section-heading"><h2 id="agents-title">Agent registry</h2><span>{snapshot ? snapshot.agents.length + " identities" : "Not loaded"}</span></div>
+      <p className="j-section-description">Registered identities are not a count of running agents. Runtime connections require separate verification.</p>
+      {!snapshot || snapshot.agents.length === 0 ? <div className="j-empty"><span className="j-empty-symbol" aria-hidden="true">+</span>
+        <span>{snapshot ? "No registered identities." : "Connect the workspace to see your registry."}</span></div> :
+        <div className="j-agent-grid">{snapshot.agents.map(agent =>
+          <article key={agent.slug} className="j-agent">
+            <h3>{agent.name}</h3><p>{agent.crew} · {agent.role}</p>
+            <p>Configured: {agent.configured_status}</p><p className="runtime">Runtime: {agent.runtime_state}</p>
+            <p>Last completed run: {agent.last_finished_at ?? "No recorded completion"}</p>
+          </article>)}</div>}
+      {snapshot && <p className="j-fineprint">Task records · Done: {snapshot.tasks.counts.done ?? 0} · Blocked: {snapshot.tasks.counts.blocked ?? 0}</p>}
+    </section>
+
+    <section className="jarvis-section" aria-labelledby="memory-title">
+      <div className="j-section-heading"><h2 id="memory-title">Project memory / G-Brain</h2><span>Project scope</span></div>
+      <p className="j-section-description">Your existing project memory. Private files and Hermes profiles remain unlinked.</p>
+      <div className="j-memory">{snapshot ? snapshot.memory.counts.length ? snapshot.memory.counts.map(row =>
+        <span key={row.type}>{row.type}: {row.count}</span>) : <p>No project memory records.</p> : <p>Memory counts not loaded.</p>}</div>
+    </section>
+    <footer className="jarvis-footer"><span>ALKAHTANI / HUMAN IN CONTROL</span><span>NO AUTONOMOUS ACTIONS ENABLED</span></footer>
   </main>;
 }
