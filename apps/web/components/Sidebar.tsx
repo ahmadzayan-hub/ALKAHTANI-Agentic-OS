@@ -1,6 +1,6 @@
 const NAV: [string, string[]][] = [
   ["OPERATE", ["Home","Dashboard","Comms","Funnel","Workflows","Social","Content","Finances"]],
-  ["AGENTS", ["Agents","Tasks","Skills","Org Chart"]],
+  ["AGENTS", ["Agent OS","Agents","Tasks","Skills","Org Chart"]],
   ["INTELLIGENCE", ["G-Brain"]],
   ["SYSTEM", ["Connections","Roadmap","Analytics","Reference Model"]],
   ["VARIANTS", ["Personas"]],
@@ -18,7 +18,7 @@ export default function Sidebar() {
           ))}
         </div>
       ))}
-      <div className="text-[10px] text-emerald-400">18/22 systems live · real agents</div>
+      <div className="text-[10px] text-zinc-500">Runtime connections require verification</div>
     </aside>
   );
 }
