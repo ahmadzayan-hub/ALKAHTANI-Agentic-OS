@@ -21,7 +21,7 @@ export async function taskRoutes(app: FastifyInstance) {
   app.post<{ Body: { title: string; body?: string; dept?: string; priority?: number; due_at?: string } }>(
     "/", async (req, reply) => {
       const { title, body, dept, priority, due_at } = req.body ?? {};
-      if (!title?.trim()) return reply.code(400).send({ error: "title required" });
+      if (typeof title !== "string" || !title.trim()) return reply.code(400).send({ error: "title required" });
       const row = (await db.query(
         `insert into tasks (title, body, dept_id, priority, due_at, created_by)
          values ($1,$2,(select id from departments where slug=$3),$4,$5,'operator')
