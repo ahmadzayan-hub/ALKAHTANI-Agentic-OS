@@ -1,8 +1,19 @@
 # Agent OS / Hermes local milestone
 
-This work builds on ALKAHTANI-Agentic-OS, based on draft PR #5 at
-`dd4aa479e1379856aa43c890eadfe958a45ca788`. PR #5 is not merged or edited.
-The local branch is `codex/hermes-agent-os-local`. No deployment is included.
+This work builds on ALKAHTANI-Agentic-OS and the API contract changes from PR #5
+at `dd4aa479e1379856aa43c890eadfe958a45ca788`. PR #5 was subsequently merged as
+`95177c8a5b661d8d1679fe660faeaf60213bdd45`; the release integration includes that
+merge and the two preserved local commits ending at
+`a755e7c7c59e0937873a29a9821d0d3b4caf659c`. No runtime deployment is included.
+
+The original local validation below is historical. Its final mobile More-menu
+interaction timed out after the last change, and production build was not run
+locally. The release CI now builds the web app and runs
+`scripts/verify-agent-os.mjs` against only synthetic intercepted API responses.
+It checks the final mobile keyboard menu, three rendered modes, reduced motion,
+pause, snapshot loading and token clearing. CI also runs all 12 API contracts
+and API TypeScript. A successful run must be linked to the exact published SHA;
+adding these checks alone does not establish a passing result.
 
 ## Implemented boundary
 
