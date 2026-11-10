@@ -78,14 +78,16 @@ test('task creation rejects invalid titles without writes and binds valid user d
   } finally { await app.close(); }
 });
 test('invalid task transitions are rejected before writes', async () => {
+  const id = '11111111-2222-3333-4444-555555555555';
   const app = await appFor(taskRoutes, '/tasks');
   try {
-    const response = await app.inject({ method: 'PATCH', url: '/tasks/task-1', headers, payload: { state: 'invented' } });
+    const response = await app.inject({ method: 'PATCH', url: '/tasks/' + id, headers, payload: { state: 'invented' } });
     assert.equal(response.statusCode, 400);
     assert.equal(calls.length, 0);
-    const valid = await app.inject({ method: 'PATCH', url: '/tasks/task-1', headers, payload: { state: 'done' } });
+    rows = [{ id, state: 'done' }];
+    const valid = await app.inject({ method: 'PATCH', url: '/tasks/' + id, headers, payload: { state: 'done' } });
     assert.equal(valid.statusCode, 200);
-    assert.deepEqual(calls[0].values, ['task-1', 'done']);
+    assert.deepEqual(calls[0].values, [id, 'done']);
   } finally { await app.close(); }
 });
 test('funnel conversion uses cumulative reached counts and handles empty data', async () => {

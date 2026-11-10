@@ -74,13 +74,15 @@ test('alert list binds its filters, caps the page size at 200 and counts only un
 });
 
 test('resolving an incident writes only that incident by a bound id', async () => {
+  const id = '11111111-2222-3333-4444-555555555555';
+  rows = [{ id, resolved: true }];
   const app = await appFor(alertRoutes as never, '/alerts');
   try {
-    const response = await app.inject({ method: 'PATCH', url: '/alerts/inc-7/resolve', headers });
+    const response = await app.inject({ method: 'PATCH', url: '/alerts/' + id + '/resolve', headers });
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.json(), { id: 'inc-7', resolved: true });
+    assert.deepEqual(response.json(), { id, resolved: true });
     assert.equal(calls.length, 1);
-    assert.deepEqual(calls[0].values, ['inc-7']);
+    assert.deepEqual(calls[0].values, [id]);
     assert.equal(/where\s+id=\$1/i.test(calls[0].sql), true);
   } finally { await app.close(); }
 });
