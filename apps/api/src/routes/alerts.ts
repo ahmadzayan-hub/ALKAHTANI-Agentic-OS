@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db.js";
 import { auth } from "../auth.js";
+import { isUuid } from "../validation.js";
 
 export async function alertRoutes(app: FastifyInstance) {
   app.addHook("onRequest", auth);
@@ -18,8 +19,10 @@ export async function alertRoutes(app: FastifyInstance) {
     return { incidents: rows, open: rows.filter((r: any) => !r.resolved).length };
   });
 
-  app.patch<{ Params: { id: string } }>("/:id/resolve", async (req) => {
-    await db.query(`update incidents set resolved=true where id=$1`, [req.params.id]);
-    return { id: req.params.id, resolved: true };
+  app.patch<{ Params: { id: string } }>("/:id/resolve", async (req, reply) => {
+    if (!isUuid(req.params.id)) return reply.code(400).send({ error: "valid incident id required" });
+    const row = (await db.query(`update incidents set resolved=true where id=$1 returning id, resolved`, [req.params.id])).rows[0];
+    if (!row) return reply.code(404).send({ error: "incident not found" });
+    return row;
   });
 }

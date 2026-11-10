@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-10 - Confirm task and incident updates
+
+- Task status updates and incident resolution return 404 when no row exists,
+  rather than acknowledging the requested change. Success returns the actual
+  updated row through `UPDATE ... RETURNING`.
+- Malformed UUIDs return 400 before querying PostgreSQL; authentication still
+  runs first. Five new HTTP regression tests cover both routes, including
+  database failures and canonical returned IDs.
+
 ## 2026-08-20 — M6: Hardening — alerts, standup visibility, backups, docs
 - **Alerts** (`services/alerts.ts`): a single `raiseIncident()` writes to
   `incidents` and, if `ALERT_WEBHOOK_URL` is set, best-effort POSTs a

@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db.js";
 import { auth } from "../auth.js";
+import { isUuid } from "../validation.js";
 
 const STATES = ["open", "doing", "done", "blocked"] as const;
 
@@ -31,12 +32,14 @@ export async function taskRoutes(app: FastifyInstance) {
     });
 
   app.patch<{ Params: { id: string }; Body: { state: string } }>("/:id", async (req, reply) => {
+    if (!isUuid(req.params.id)) return reply.code(400).send({ error: "valid task id required" });
     const { state } = req.body ?? {};
     if (!STATES.includes(state as any)) return reply.code(400).send({ error: `state must be one of ${STATES.join(",")}` });
-    await db.query(
+    const row = (await db.query(
       `update tasks set state=$2, completed_at = case when $2='done' then now() else null end
-       where id=$1`,
-      [req.params.id, state]);
-    return { id: req.params.id, state };
+       where id=$1 returning id, state`,
+      [req.params.id, state])).rows[0];
+    if (!row) return reply.code(404).send({ error: "task not found" });
+    return row;
   });
 }
