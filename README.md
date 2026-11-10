@@ -67,6 +67,10 @@ bash scripts/backup_db.sh
 
 ## Design
 
+The [agent enable approval gate](docs/AGENT-ENABLE-APPROVALS.md) has an isolated
+PostgreSQL regression runner for consumption, concurrent requests and rollback.
+It does not require the full Compose stack or access to a live database.
+
 The 10 UI mockups in `design/mockups/` are real HTML/SVG (JetBrains Mono,
 validated dept palette, one token sheet in `base.css`) — the frontend
 reproduces them with react-force-graph + Tailwind, rendering text from the
