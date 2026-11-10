@@ -1,0 +1,7 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "fix/confirmed-task-alert-updates": false
+    }
+  }
+}
