@@ -1,0 +1,50 @@
+name: API contracts
+on:
+  pull_request:
+  push:
+    branches: [main, claude/agentic-os-build-dp93ao]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test --workspace apps/api
+      - run: npx tsc --noEmit --project apps/api/tsconfig.json
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build --workspace apps/web
+      - name: Install pinned browser tooling in disposable runner
+        env:
+          BROWSER_TOOL_ROOT: ${{ runner.temp }}/agent-os-browser
+        run: |
+          npm install --prefix "$BROWSER_TOOL_ROOT" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund playwright@1.62.1
+          "$BROWSER_TOOL_ROOT/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify disconnected and synthetic browser states
+        env:
+          BROWSER_TOOL_ROOT: ${{ runner.temp }}/agent-os-browser
+        run: node scripts/verify-agent-os.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-os-synthetic-browser
+          path: artifacts/agent-os/*.png
+          if-no-files-found: ignore
+          retention-days: 7

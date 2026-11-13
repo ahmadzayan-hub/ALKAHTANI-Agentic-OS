@@ -1,6 +1,8 @@
 import { FastifyRequest } from "fastify";
 
 export async function auth(req: FastifyRequest) {
-  const t = (req.headers.authorization || "").replace("Bearer ", "");
-  if (t !== process.env.OPERATOR_TOKEN) throw { statusCode: 401, error: "unauthorized" };
+  const expected = process.env.OPERATOR_TOKEN;
+  const match = /^Bearer ([^\s]+)$/i.exec(req.headers.authorization || "");
+  if (!expected || !match || match[1] !== expected)
+    throw { statusCode: 401, error: "unauthorized" };
 }

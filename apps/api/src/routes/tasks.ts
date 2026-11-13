@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db.js";
 import { auth } from "../auth.js";
+import { isUuid } from "../validation.js";
 
 const STATES = ["open", "doing", "done", "blocked"] as const;
 
@@ -21,7 +22,7 @@ export async function taskRoutes(app: FastifyInstance) {
   app.post<{ Body: { title: string; body?: string; dept?: string; priority?: number; due_at?: string } }>(
     "/", async (req, reply) => {
       const { title, body, dept, priority, due_at } = req.body ?? {};
-      if (!title?.trim()) return reply.code(400).send({ error: "title required" });
+      if (typeof title !== "string" || !title.trim()) return reply.code(400).send({ error: "title required" });
       const row = (await db.query(
         `insert into tasks (title, body, dept_id, priority, due_at, created_by)
          values ($1,$2,(select id from departments where slug=$3),$4,$5,'operator')
@@ -31,14 +32,16 @@ export async function taskRoutes(app: FastifyInstance) {
     });
 
   app.patch<{ Params: { id: string }; Body: { state: string } }>("/:id", async (req, reply) => {
+    if (!isUuid(req.params.id)) return reply.code(400).send({ error: "valid task id required" });
     const { state } = req.body ?? {};
     if (!STATES.includes(state as any)) return reply.code(400).send({ error: `state must be one of ${STATES.join(",")}` });
-    await db.query(
+    const row = (await db.query(
       // Cast once: $2 feeds both an enum column and a text comparison, and
       // Postgres refuses to deduce two types for one parameter.
       `update tasks set state=$2::task_state, completed_at = case when $2::task_state='done' then now() else null end
-       where id=$1`,
-      [req.params.id, state]);
-    return { id: req.params.id, state };
+       where id=$1 returning id, state`,
+      [req.params.id, state])).rows[0];
+    if (!row) return reply.code(404).send({ error: "task not found" });
+    return row;
   });
 }
