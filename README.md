@@ -5,6 +5,8 @@ An Agentic Operating System: one human Operator, one **CONDUCTOR** super-agent
 **G-BRAIN** knowledge core, and a live business dashboard — dark
 terminal-brutalist UI throughout.
 
+<p align="center"><img src="docs/assets/hero.jpg" alt="Concept image (AI-generated). Not a product screenshot." width="100%"><br><sub><em>Concept image (AI-generated). Not a product screenshot.</em></sub></p>
+
 ![hero](design/mockups/out/hero.png)
 
 ## Layout
