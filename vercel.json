@@ -1,6 +1,7 @@
 {
   "git": {
     "deploymentEnabled": {
+      "fix/consume-agent-enable-approval": false,
       "fix/confirmed-task-alert-updates": false
     }
   }
