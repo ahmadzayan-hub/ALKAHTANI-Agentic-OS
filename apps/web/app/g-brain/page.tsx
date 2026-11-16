@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-const API = process.env.NEXT_PUBLIC_API!;
-const TOK = "local-dev-token"; // M6: swap for session token
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch, describeError } from "../../lib/api";
+import { ErrorPanel, Loading } from "../../components/ApiState";
 type N = { id: string; type: string; label: string; color?: string; x?: number; y?: number; slug?: string };
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
@@ -9,40 +9,64 @@ export default function Page() {
   const [view, setView] = useState<"radial" | "neural">("radial");
   const [dept, setDept] = useState<string | null>(null);
   const [data, setData] = useState<{ nodes: N[]; links: any[] } | null>(null);
-  useEffect(() => {
-    const url = dept ? `${API}/api/v1/gbrain/depts/${dept}/subgraph`
-                     : `${API}/api/v1/gbrain/graph?view=${view}`;
-    fetch(url, { headers: { Authorization: `Bearer ${TOK}` } }).then(r => r.json()).then(setData);
+  const [error, setError] = useState<unknown>(null);
+  const load = useCallback(() => {
+    setError(null); setData(null);
+    const path = dept ? `/gbrain/depts/${dept}/subgraph` : `/gbrain/graph?view=${view}`;
+    apiFetch<{ nodes: N[]; links: any[] }>(path).then(setData).catch(setError);
   }, [view, dept]);
+  useEffect(() => { load(); }, [load]);
+  const tab = (active: boolean) => `px-2 border ${active ? "border-[var(--fin)] text-[var(--fin)]" : "border-zinc-600"}`;
   return (
     <main className="gridbg min-h-screen p-6">
-      <header className="flex items-center gap-3 mb-4">
+      <header className="flex flex-wrap items-center gap-3 mb-4">
         <h1 className="neon text-2xl font-bold">G-BRAIN</h1>
         <span className="text-xs text-zinc-500">// KNOWLEDGE CORE</span>
-        <button className="px-2 border border-zinc-600" onClick={() => { setDept(null); setView("radial"); }}>Radial</button>
-        <button className="px-2 border border-zinc-600" onClick={() => { setDept(null); setView("neural"); }}>Neural</button>
+        <button className={tab(!dept && view === "radial")} aria-pressed={!dept && view === "radial"} onClick={() => { setDept(null); setView("radial"); }}>Radial</button>
+        <button className={tab(!dept && view === "neural")} aria-pressed={!dept && view === "neural"} onClick={() => { setDept(null); setView("neural"); }}>Neural</button>
         {dept && <button className="px-2 border border-red-500 text-red-400" onClick={() => setDept(null)}>← Back</button>}
       </header>
-      <IngestBar />
-      {data && <Graph data={data} onDept={(s?: string) => s && setDept(s)} />}
+      <IngestBar onIngested={load} />
+      {error ? <ErrorPanel error={error} onRetry={load} />
+        : !data ? <Loading label="loading graph…" />
+        : data.nodes.length === 0 ? <p className="text-sm text-zinc-500">The graph is empty. Ingest a note above to add the first node.</p>
+        : <Graph data={data} onDept={(s?: string) => s && setDept(s)} />}
+      {data && !error && !dept && <p className="text-[10px] text-zinc-600 text-center mt-2">Click a department hub to open its crew subgraph.</p>}
     </main>);
 }
 
-function IngestBar() {
+function IngestBar({ onIngested }: { onIngested: () => void }) {
   const [txt, setTxt] = useState("");
-  const post = (fd: FormData) => fetch(`${API}/api/v1/gbrain/ingest`,
-    { method: "POST", body: fd, headers: { Authorization: `Bearer ${TOK}` } }).then(r => r.json())
-    .then(j => alert(JSON.stringify(j)));
+  const [status, setStatus] = useState<{ kind: "busy" | "ok" | "error"; text: string } | null>(null);
+  const post = (fd: FormData) => {
+    setStatus({ kind: "busy", text: "ingesting…" });
+    apiFetch<{ node?: string; dept?: string | null; chunks?: number; vault?: string }>("/gbrain/ingest", { method: "POST", body: fd })
+      .then(j => {
+        const parts = [j.dept && `dept ${j.dept}`, j.chunks != null && `${j.chunks} chunk(s)`, j.vault && `saved to ${j.vault}`].filter(Boolean);
+        setStatus({ kind: "ok", text: `Ingested${parts.length ? ": " + parts.join(" · ") : "."}` });
+        onIngested();
+      })
+      .catch(e => { const d = describeError(e); setStatus({ kind: "error", text: `${d.title} ${d.hint}` }); });
+  };
   return (
-    <div className="mb-4 flex gap-2 max-w-3xl">
+    <div className="mb-4 max-w-3xl">
+    <div className="flex flex-wrap gap-2">
       <input value={txt} onChange={e => setTxt(e.target.value)}
         placeholder="dump into the brain... or drop documents · text · voice · drag or upload"
-        className="flex-1 bg-black/40 border border-zinc-600 px-3 py-2"
+        aria-label="Text to ingest into G-Brain"
+        className="flex-1 min-w-[200px] bg-black/40 border border-zinc-600 px-3 py-2"
         onKeyDown={e => { if (e.key === "Enter" && txt) { const fd = new FormData(); fd.append("text", txt); post(fd); setTxt(""); } }} />
       <label className="px-3 py-2 border border-zinc-600 cursor-pointer">upload
         <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { const fd = new FormData(); fd.append("file", f); post(fd); } }} /></label>
       <label className="px-3 py-2 border border-zinc-600 cursor-pointer">voice
         <input type="file" accept="audio/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { const fd = new FormData(); fd.append("audio", f); post(fd); } }} /></label>
+    </div>
+    {status && (
+      <p role={status.kind === "error" ? "alert" : "status"}
+         className={`mt-2 text-xs ${status.kind === "error" ? "text-[#ffb020]" : status.kind === "ok" ? "text-[var(--fin)]" : "text-zinc-500"}`}>
+        {status.text}
+      </p>
+    )}
     </div>);
 }
 

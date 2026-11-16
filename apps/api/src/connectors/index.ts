@@ -14,7 +14,7 @@ export async function runProbe(slug: string): Promise<ProbeResult & { slug: stri
 
   await db.query(
     `update connectors set status=$2, latency_ms=$3, last_sync_at=now(),
-       health=jsonb_build_object('detail',$4,'checked_at',now())
+       health=jsonb_build_object('detail',$4::text,'checked_at',now())
      where slug=$1`,
     [slug, r.status, r.latency_ms, r.detail]);
 
